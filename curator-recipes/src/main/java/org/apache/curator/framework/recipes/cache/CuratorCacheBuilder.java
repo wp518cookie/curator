@@ -60,4 +60,11 @@ public interface CuratorCacheBuilder
      * @return new Curator Cache
      */
     CuratorCache build();
+
+    /**
+     * Return a new bridge cache based on the builder methods that have been called.
+     *
+     * @return new bridge cache
+     */
+    CuratorCacheBridge buildBridge();
 }
