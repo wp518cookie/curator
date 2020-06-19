@@ -37,6 +37,7 @@ import org.apache.curator.retry.RetryOneTime;
 import org.apache.curator.test.BaseClassForTests;
 import org.apache.curator.test.TestingServer;
 import org.apache.curator.test.Timing;
+import org.apache.curator.test.compatibility.CuratorTestBase;
 import org.apache.curator.test.compatibility.Timing2;
 import org.apache.curator.utils.CloseableUtils;
 import org.testng.Assert;
@@ -60,6 +61,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+@Test(groups = CuratorTestBase.zk35TestCompatibilityGroup)
 public class TestLeaderLatch extends BaseClassForTests
 {
     private static final String PATH_NAME = "/one/two/me";
@@ -185,7 +187,7 @@ public class TestLeaderLatch extends BaseClassForTests
             try ( LeaderLatch latch2 = new LeaderLatch(client, latchPath, "2") )
             {
                 latch1.start();
-                latch1.await();
+                Assert.assertTrue(latch1.await(timing.milliseconds(), TimeUnit.MILLISECONDS));
 
                 latch2.start(); // will get a watcher on latch1's node
                 timing.sleepABit();

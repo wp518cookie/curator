@@ -20,6 +20,7 @@ package org.apache.curator.framework.recipes.cache;
 
 import com.google.common.collect.Queues;
 import org.apache.curator.test.BaseClassForTests;
+import org.apache.curator.test.compatibility.CuratorTestBase;
 import org.apache.curator.utils.CloseableUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -34,6 +35,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+@Test(groups = CuratorTestBase.zk35TestCompatibilityGroup)
 public class TestPathChildrenCacheInCluster extends BaseClassForTests
 {
     @Test(enabled = false)  // this test is very flakey - it needs to be re-written at some point
@@ -43,11 +45,9 @@ public class TestPathChildrenCacheInCluster extends BaseClassForTests
         PathChildrenCache cache = null;
         CuratorFramework client1 = null;
         CuratorFramework client2 = null;
-        TestingCluster cluster = new TestingCluster(3);
+        TestingCluster cluster = createAndStartCluster(3);
         try
         {
-            cluster.start();
-
             // client 1 only connects to 1 server
             InstanceSpec client1Instance = cluster.getInstances().iterator().next();
             client1 = CuratorFrameworkFactory.newClient(client1Instance.getConnectString(), 1000, 1000, new RetryOneTime(1));
@@ -101,11 +101,9 @@ public class TestPathChildrenCacheInCluster extends BaseClassForTests
 
         CuratorFramework client = null;
         PathChildrenCache cache = null;
-        TestingCluster cluster = new TestingCluster(3);
+        TestingCluster cluster = createAndStartCluster(3);
         try
         {
-            cluster.start();
-
             client = CuratorFrameworkFactory.newClient(cluster.getConnectString(), timing.session(), timing.connection(), new RetryOneTime(1));
             client.start();
             client.create().creatingParentsIfNeeded().forPath("/test");

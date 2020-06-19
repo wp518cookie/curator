@@ -30,6 +30,7 @@ import org.apache.curator.test.BaseClassForTests;
 import org.apache.curator.test.InstanceSpec;
 import org.apache.curator.test.TestingCluster;
 import org.apache.curator.test.Timing;
+import org.apache.curator.test.compatibility.CuratorTestBase;
 import org.apache.curator.utils.CloseableUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -46,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+@Test(groups = CuratorTestBase.zk35TestCompatibilityGroup)
 public class TestInterProcessSemaphoreCluster extends BaseClassForTests
 {
     @Test
@@ -57,11 +59,9 @@ public class TestInterProcessSemaphoreCluster extends BaseClassForTests
 
         ExecutorService                 executorService = Executors.newFixedThreadPool(CLIENT_QTY);
         ExecutorCompletionService<Void> completionService = new ExecutorCompletionService<Void>(executorService);
-        TestingCluster                  cluster = new TestingCluster(3);
+        TestingCluster                  cluster = createAndStartCluster(3);
         try
         {
-            cluster.start();
-
             final AtomicReference<String>   connectionString = new AtomicReference<String>(cluster.getConnectString());
             final EnsembleProvider          provider = new EnsembleProvider()
             {
@@ -176,8 +176,7 @@ public class TestInterProcessSemaphoreCluster extends BaseClassForTests
             timing.forWaiting().sleepABit();
             Assert.assertEquals(0, acquireCount.get());
 
-            cluster = new TestingCluster(3);
-            cluster.start();
+            cluster = createAndStartCluster(3);
 
             connectionString.set(cluster.getConnectString());
             timing.forWaiting().sleepABit();
@@ -205,12 +204,10 @@ public class TestInterProcessSemaphoreCluster extends BaseClassForTests
         ExecutorService                 executorService = Executors.newFixedThreadPool(QTY);
         ExecutorCompletionService<Void> completionService = new ExecutorCompletionService<Void>(executorService);
         final Timing                    timing = new Timing();
-        TestingCluster                  cluster = new TestingCluster(3);
         List<SemaphoreClient>           semaphoreClients = Lists.newArrayList();
+        TestingCluster                  cluster = createAndStartCluster(3);
         try
         {
-            cluster.start();
-
             final AtomicInteger         opCount = new AtomicInteger(0);
             for ( int i = 0; i < QTY; ++i )
             {

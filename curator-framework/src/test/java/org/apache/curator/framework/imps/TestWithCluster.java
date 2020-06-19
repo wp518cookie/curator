@@ -18,6 +18,7 @@
  */
 package org.apache.curator.framework.imps;
 
+import org.apache.curator.test.compatibility.CuratorTestBase;
 import org.apache.curator.utils.CloseableUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -33,7 +34,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 import java.util.concurrent.CountDownLatch;
 
-public class TestWithCluster
+public class TestWithCluster extends CuratorTestBase
 {
     @Test
     public void     testSessionSurvives() throws Exception
@@ -41,8 +42,7 @@ public class TestWithCluster
         Timing              timing = new Timing();
 
         CuratorFramework    client = null;
-        TestingCluster      cluster = new TestingCluster(3);
-        cluster.start();
+        TestingCluster      cluster = createAndStartCluster(3);
         try
         {
             client = CuratorFrameworkFactory.newClient(cluster.getConnectString(), timing.session(), timing.connection(), new ExponentialBackoffRetry(100, 3));
@@ -89,8 +89,7 @@ public class TestWithCluster
         Timing              timing = new Timing();
 
         CuratorFramework    client = null;
-        TestingCluster cluster = new TestingCluster(3);
-        cluster.start();
+        TestingCluster cluster = createAndStartCluster(3);
         try
         {
             // make sure all instances are up
@@ -139,5 +138,11 @@ public class TestWithCluster
             CloseableUtils.closeQuietly(client);
             CloseableUtils.closeQuietly(cluster);
         }
+    }
+
+    @Override
+    protected void createServer() throws Exception
+    {
+        // NOP
     }
 }

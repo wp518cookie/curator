@@ -32,7 +32,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.curator.connection.StandardConnectionHandlingPolicy;
 import org.apache.curator.retry.RetryOneTime;
 import org.apache.curator.utils.EnsurePath;
 import org.apache.zookeeper.ZooKeeper;
@@ -51,8 +50,7 @@ public class TestEnsurePath
         ZooKeeper               client = mock(ZooKeeper.class, Mockito.RETURNS_MOCKS);
         CuratorZookeeperClient  curator = mock(CuratorZookeeperClient.class);
         RetryPolicy             retryPolicy = new RetryOneTime(1);
-        RetryLoop               retryLoop = new RetryLoop(retryPolicy, null);
-        when(curator.getConnectionHandlingPolicy()).thenReturn(new StandardConnectionHandlingPolicy());
+        RetryLoop               retryLoop = new RetryLoopImpl(retryPolicy, null);
         when(curator.getZooKeeper()).thenReturn(client);
         when(curator.getRetryPolicy()).thenReturn(retryPolicy);
         when(curator.newRetryLoop()).thenReturn(retryLoop);
@@ -76,9 +74,8 @@ public class TestEnsurePath
     {
         ZooKeeper               client = mock(ZooKeeper.class, Mockito.RETURNS_MOCKS);
         RetryPolicy             retryPolicy = new RetryOneTime(1);
-        RetryLoop               retryLoop = new RetryLoop(retryPolicy, null);
+        RetryLoop               retryLoop = new RetryLoopImpl(retryPolicy, null);
         final CuratorZookeeperClient  curator = mock(CuratorZookeeperClient.class);
-        when(curator.getConnectionHandlingPolicy()).thenReturn(new StandardConnectionHandlingPolicy());
         when(curator.getZooKeeper()).thenReturn(client);
         when(curator.getRetryPolicy()).thenReturn(retryPolicy);
         when(curator.newRetryLoop()).thenReturn(retryLoop);

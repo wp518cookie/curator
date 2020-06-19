@@ -26,13 +26,13 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.api.BackgroundCallback;
 import org.apache.curator.framework.api.CuratorEvent;
 import org.apache.curator.framework.api.CuratorEventType;
+import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.test.InstanceSpec;
 import org.apache.curator.test.TestingCluster;
 import org.apache.curator.test.TestingZooKeeperServer;
 import org.apache.curator.test.compatibility.CuratorTestBase;
 import org.apache.curator.test.compatibility.Timing2;
-import org.apache.curator.test.compatibility.Zk35MethodInterceptor;
 import org.apache.curator.utils.CloseableUtils;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -55,9 +55,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-@Test(groups = Zk35MethodInterceptor.zk35Group)
 public class TestReconfiguration extends CuratorTestBase
 {
     private final Timing2 timing = new Timing2();
@@ -77,9 +77,7 @@ public class TestReconfiguration extends CuratorTestBase
         System.setProperty("zookeeper.DigestAuthenticationProvider.superDigest", superUserPasswordDigest);
 
         CloseableUtils.closeQuietly(server);
-        server = null;
-        cluster = new TestingCluster(3);
-        cluster.start();
+        cluster = createAndStartCluster(3);
     }
 
     @AfterMethod
@@ -174,6 +172,51 @@ public class TestReconfiguration extends CuratorTestBase
             System.out.println(quorumVerifier);
             assertConfig(quorumVerifier, cluster.getInstances());
             Assert.assertEquals(EnsembleTracker.configToConnectionString(quorumVerifier), ensembleProvider.getConnectionString());
+        }
+    }
+
+    @Test
+    public void testAddWithoutEnsembleTracker() throws Exception
+    {
+        final String initialClusterCS = cluster.getConnectString();
+        try ( CuratorFramework client = newClient(cluster.getConnectString(), false))
+        {
+            Assert.assertEquals(((CuratorFrameworkImpl) client).getEnsembleTracker(), null);
+            client.start();
+
+            QuorumVerifier oldConfig = toQuorumVerifier(client.getConfig().forEnsemble());
+            assertConfig(oldConfig, cluster.getInstances());
+
+            CountDownLatch latch = setChangeWaiter(client);
+            try ( TestingCluster newCluster = new TestingCluster(TestingCluster.makeSpecs(1, false)) )
+            {
+                newCluster.start();
+
+                client.reconfig().joining(toReconfigSpec(newCluster.getInstances())).fromConfig(oldConfig.getVersion()).forEnsemble();
+
+                Assert.assertTrue(timing.awaitLatch(latch));
+
+                byte[] newConfigData = client.getConfig().forEnsemble();
+                QuorumVerifier newConfig = toQuorumVerifier(newConfigData);
+                List<InstanceSpec> newInstances = Lists.newArrayList(cluster.getInstances());
+                newInstances.addAll(newCluster.getInstances());
+                assertConfig(newConfig, newInstances);
+                Assert.assertEquals(ensembleProvider.getConnectionString(), initialClusterCS);
+                Assert.assertNotEquals(EnsembleTracker.configToConnectionString(newConfig), ensembleProvider.getConnectionString());
+                Assert.assertEquals(client.getZookeeperClient().getCurrentConnectionString(), initialClusterCS);
+                final CountDownLatch reconnectLatch = new CountDownLatch(1);
+                client.getConnectionStateListenable().addListener(
+                    (cfClient, newState) -> {
+                        if (newState == ConnectionState.RECONNECTED) reconnectLatch.countDown();
+                    }
+                );
+                client.getZookeeperClient().getZooKeeper().getTestable().injectSessionExpiration();
+                Assert.assertTrue(reconnectLatch.await(2, TimeUnit.SECONDS));
+                Assert.assertEquals(client.getZookeeperClient().getCurrentConnectionString(), initialClusterCS);
+                Assert.assertEquals(ensembleProvider.getConnectionString(), initialClusterCS);
+                newConfigData = client.getConfig().forEnsemble();
+                Assert.assertNotEquals(EnsembleTracker.configToConnectionString(newConfig), ensembleProvider.getConnectionString());
+            }
         }
     }
 
@@ -408,12 +451,22 @@ public class TestReconfiguration extends CuratorTestBase
         Assert.assertEquals("127.0.0.1:2181", configString);
     }
 
-    private CuratorFramework newClient()
+    @Override
+    protected void createServer() throws Exception
     {
-        return newClient(cluster.getConnectString());
+        // NOP
     }
 
-    private CuratorFramework newClient(String connectionString)
+    private CuratorFramework newClient()
+    {
+        return newClient(cluster.getConnectString(), true);
+    }
+    
+    private CuratorFramework newClient(String connectionString) {
+    	return newClient(connectionString, true);
+    }
+
+    private CuratorFramework newClient(String connectionString, boolean withEnsembleProvider)
     {
         final AtomicReference<String> connectString = new AtomicReference<>(connectionString);
         ensembleProvider = new EnsembleProvider()
@@ -448,6 +501,7 @@ public class TestReconfiguration extends CuratorTestBase
         };
         return CuratorFrameworkFactory.builder()
             .ensembleProvider(ensembleProvider)
+            .ensembleTracker(withEnsembleProvider)
             .sessionTimeoutMs(timing.session())
             .connectionTimeoutMs(timing.connection())
             .authorization("digest", superUserPassword.getBytes())

@@ -23,7 +23,6 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.framework.imps.TestCleanState;
 import org.apache.curator.framework.api.BackgroundCallback;
 import org.apache.curator.framework.api.CuratorEvent;
 import org.apache.curator.framework.api.CuratorWatcher;
@@ -31,7 +30,6 @@ import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.RetryNTimes;
 import org.apache.curator.retry.RetryOneTime;
-import org.apache.curator.test.BaseClassForTests;
 import org.apache.curator.test.Timing;
 import org.apache.curator.test.compatibility.CuratorTestBase;
 import org.apache.curator.utils.CloseableUtils;
@@ -159,7 +157,7 @@ public class TestSharedCount extends CuratorTestBase
             }
             for ( CuratorFramework client : clients )
             {
-                TestCleanState.closeAndTestClean(client);
+                CloseableUtils.closeQuietly(client);
             }
         }
     }
@@ -204,7 +202,7 @@ public class TestSharedCount extends CuratorTestBase
         finally
         {
             CloseableUtils.closeQuietly(count);
-            TestCleanState.closeAndTestClean(client);
+            CloseableUtils.closeQuietly(client);
         }
     }
 
@@ -249,7 +247,7 @@ public class TestSharedCount extends CuratorTestBase
         finally
         {
             CloseableUtils.closeQuietly(count);
-            TestCleanState.closeAndTestClean(client);
+            CloseableUtils.closeQuietly(client);
         }
     }
 
@@ -304,8 +302,8 @@ public class TestSharedCount extends CuratorTestBase
         {
             CloseableUtils.closeQuietly(count2);
             CloseableUtils.closeQuietly(count1);
-            TestCleanState.closeAndTestClean(client2);
-            TestCleanState.closeAndTestClean(client1);
+            CloseableUtils.closeQuietly(client2);
+            CloseableUtils.closeQuietly(client1);
         }
     }
 
@@ -367,7 +365,7 @@ public class TestSharedCount extends CuratorTestBase
         finally
         {
             CloseableUtils.closeQuietly(sharedCount);
-            TestCleanState.closeAndTestClean(curatorFramework);
+            CloseableUtils.closeQuietly(curatorFramework);
         }
     }
 
@@ -379,7 +377,6 @@ public class TestSharedCount extends CuratorTestBase
         final CountDownLatch getReconnectEvent = new CountDownLatch(1);
 
         final AtomicInteger numChangeEvents = new AtomicInteger(0);
-
 
         CuratorFramework curatorFramework = CuratorFrameworkFactory.newClient(server.getConnectString(), new RetryNTimes(10, 500));
         curatorFramework.start();
@@ -431,12 +428,12 @@ public class TestSharedCount extends CuratorTestBase
 
             // CURATOR-311: when a Curator client's state became RECONNECTED, countHasChanged method is called back
             // because the Curator client calls readValueAndNotifyListenersInBackground in SharedValue#ConnectionStateListener#stateChanged.
-            Assert.assertEquals(numChangeEvents.get(), 3);
+            Assert.assertTrue(numChangeEvents.get() > 2);
         }
         finally
         {
             CloseableUtils.closeQuietly(sharedCount);
-            TestCleanState.closeAndTestClean(curatorFramework);
+            CloseableUtils.closeQuietly(curatorFramework);
         }
     }
 

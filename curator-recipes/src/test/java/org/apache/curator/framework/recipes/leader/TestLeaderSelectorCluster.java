@@ -18,6 +18,7 @@
  */
 package org.apache.curator.framework.recipes.leader;
 
+import org.apache.curator.test.compatibility.CuratorTestBase;
 import org.apache.curator.utils.CloseableUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -36,7 +37,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
 @SuppressWarnings("ThrowableResultOfMethodCallIgnored")
-public class TestLeaderSelectorCluster
+public class TestLeaderSelectorCluster extends CuratorTestBase
 {
     @Test
     public void     testRestart() throws Exception
@@ -44,8 +45,7 @@ public class TestLeaderSelectorCluster
         final Timing        timing = new Timing();
 
         CuratorFramework    client = null;
-        TestingCluster      cluster = new TestingCluster(3);
-        cluster.start();
+        TestingCluster      cluster = createAndStartCluster(3);
         try
         {
             client = CuratorFrameworkFactory.newClient(cluster.getConnectString(), timing.session(), timing.connection(), new RetryOneTime(1));
@@ -90,8 +90,7 @@ public class TestLeaderSelectorCluster
         final Timing        timing = new Timing();
 
         CuratorFramework    client = null;
-        TestingCluster      cluster = new TestingCluster(3);
-        cluster.start();
+        TestingCluster      cluster = createAndStartCluster(3);
         try
         {
             client = CuratorFrameworkFactory.newClient(cluster.getConnectString(), timing.session(), timing.connection(), new RetryOneTime(1));
@@ -181,5 +180,11 @@ public class TestLeaderSelectorCluster
             CloseableUtils.closeQuietly(client);
             CloseableUtils.closeQuietly(cluster);
         }
+    }
+
+    @Override
+    protected void createServer() throws Exception
+    {
+        // NOP
     }
 }
